@@ -113,7 +113,7 @@ services:
   recyclarr:
     image: ghcr.io/recyclarr/recyclarr
     container_name: recyclarr
-    user: ${PUID}:${PGID}
+    user: 1000:1000
     environment:
       - TZ=${TZ}
     volumes:
