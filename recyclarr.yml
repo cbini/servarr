@@ -1,6 +1,6 @@
 radarr:
   hd-bluray-web:
-    base_url: Put your Radarr URL here
+    base_url: 0.0.0.0:7878
     api_key: Put your API key here
 
     include:
@@ -48,7 +48,7 @@ radarr:
 
 sonarr:
   web-1080p-v4:
-    base_url: Put your Sonarr URL here
+    base_url: 0.0.0.0:8989
     api_key: Put your API key here
 
     include:
