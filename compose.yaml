@@ -1,0 +1,111 @@
+services:
+  prowlarr:
+    image: ghcr.io/hotio/prowlarr:release
+    container_name: prowlarr
+    restart: ${RESTART_POLICY}
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/prowlarr:/config
+    ports:
+      - 9696:9696
+
+  sonarr:
+    image: ghcr.io/hotio/sonarr:release
+    container_name: sonarr
+    restart: ${RESTART_POLICY}
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/sonarr:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - 8989:8989
+
+  radarr:
+    image: ghcr.io/hotio/radarr:release
+    container_name: radarr
+    restart: ${RESTART_POLICY}
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/radarr:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - 7878:7878
+
+  jellyseerr:
+   image: fallenbagel/jellyseerr:latest
+   container_name: jellyseerr
+   restart: ${RESTART_POLICY}
+   environment:
+     - PUID=${PUID}
+     - PGID=${PGID}
+     - TZ=${TZ}
+     - UMASK=${UMASK}
+   volumes:
+     - ${CONFIG_PATH}/jellyseerr:/app/config
+   ports:
+     - 5055:5055
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: ${RESTART_POLICY}
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+    volumes:
+      - ${CONFIG_PATH}/jellyfin:/config
+      - ${DATA_PATH}/media:/data/media
+    ports:
+      - 8096:8096/tcp
+      - 7359:7359/udp
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+    volumes:
+      - ${CONFIG_PATH}/sabnzbd:/config
+      - ${DATA_PATH}/usenet:/data/usenet
+    ports:
+      - 8080:8080
+
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - PLEX_CLAIM= #optional
+    ports:
+      - 32400:32400
+    devices:
+     - /dev/dri:/dev/dri # QuickSync
+    volumes:
+      - ${CONFIG_PATH}/plex:/config
+      - ${DATA_PATH}:/data
