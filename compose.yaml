@@ -109,3 +109,13 @@ services:
     volumes:
       - ${CONFIG_PATH}/plex:/config
       - ${DATA_PATH}:/data
+
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr
+    container_name: recyclarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${CONFIG_PATH}/recyclarr:/config
