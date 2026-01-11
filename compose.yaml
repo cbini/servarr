@@ -123,6 +123,6 @@ services:
       - ${DATA_PATH}:/app/data
       - /docker/servarr/.env:/app/.env
     restart: unless-stopped
-  environment:
-    - TZ=${TZ}
-    - baseUrl=http://pulsarr
+    environment:
+      - TZ=${TZ}
+      - baseUrl=http://pulsarr
