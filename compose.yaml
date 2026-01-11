@@ -46,19 +46,19 @@ services:
     ports:
       - 7878:7878
 
-  jellyseerr:
-   image: fallenbagel/jellyseerr:latest
-   container_name: jellyseerr
-   restart: ${RESTART_POLICY}
-   environment:
-     - PUID=${PUID}
-     - PGID=${PGID}
-     - TZ=${TZ}
-     - UMASK=${UMASK}
-   volumes:
-     - ${CONFIG_PATH}/jellyseerr:/app/config
-   ports:
-     - 5055:5055
+  # jellyseerr:
+  #  image: fallenbagel/jellyseerr:latest
+  #  container_name: jellyseerr
+  #  restart: ${RESTART_POLICY}
+  #  environment:
+  #    - PUID=${PUID}
+  #    - PGID=${PGID}
+  #    - TZ=${TZ}
+  #    - UMASK=${UMASK}
+  #  volumes:
+  #    - ${CONFIG_PATH}/jellyseerr:/app/config
+  #  ports:
+  #    - 5055:5055
 
   # jellyfin:
   #   image: jellyfin/jellyfin:latest
@@ -114,15 +114,15 @@ services:
     volumes:
       - ${CONFIG_PATH}/recyclarr:/config
 
-  # pulsarr:
-  #   image: lakker/pulsarr:latest
-  #   container_name: pulsarr
-  #   ports:
-  #     - 3003:3003
-  #   volumes:
-  #     - ${DATA_PATH}:/app/data
-  #     - /docker/servarr/.env:/app/.env
-  #   restart: unless-stopped
-  #   environment:
-  #     - TZ=${TZ}
-  #     - baseUrl=http://pulsarr
+  pulsarr:
+    image: lakker/pulsarr:latest
+    container_name: pulsarr
+    ports:
+      - 3003:3003
+    volumes:
+      - ${CONFIG_PATH}/pulsarr:/app/data
+      - /docker/servarr/.env:/app/.env
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - baseUrl=http://pulsarr
