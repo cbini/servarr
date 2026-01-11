@@ -114,16 +114,15 @@ services:
     volumes:
       - ${CONFIG_PATH}/recyclarr:/config
 
-  services:
-    pulsarr:
-      image: lakker/pulsarr:latest
-      container_name: pulsarr
-      ports:
-        - 3003:3003
-      volumes:
-        - ${DATA_PATH}:/app/data
-        - /docker/servarr/.env:/app/.env
-      restart: unless-stopped
-    environment:
-      - TZ=${TZ}
-      - baseUrl=http://pulsarr
+  pulsarr:
+    image: lakker/pulsarr:latest
+    container_name: pulsarr
+    ports:
+      - 3003:3003
+    volumes:
+      - ${DATA_PATH}:/app/data
+      - /docker/servarr/.env:/app/.env
+    restart: unless-stopped
+  environment:
+    - TZ=${TZ}
+    - baseUrl=http://pulsarr
