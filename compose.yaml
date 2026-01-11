@@ -46,35 +46,35 @@ services:
     ports:
       - 7878:7878
 
-  jellyseerr:
-   image: fallenbagel/jellyseerr:latest
-   container_name: jellyseerr
-   restart: ${RESTART_POLICY}
-   environment:
-     - PUID=${PUID}
-     - PGID=${PGID}
-     - TZ=${TZ}
-     - UMASK=${UMASK}
-   volumes:
-     - ${CONFIG_PATH}/jellyseerr:/app/config
-   ports:
-     - 5055:5055
+  # jellyseerr:
+  #  image: fallenbagel/jellyseerr:latest
+  #  container_name: jellyseerr
+  #  restart: ${RESTART_POLICY}
+  #  environment:
+  #    - PUID=${PUID}
+  #    - PGID=${PGID}
+  #    - TZ=${TZ}
+  #    - UMASK=${UMASK}
+  #  volumes:
+  #    - ${CONFIG_PATH}/jellyseerr:/app/config
+  #  ports:
+  #    - 5055:5055
 
-  jellyfin:
-    image: jellyfin/jellyfin:latest
-    container_name: jellyfin
-    restart: ${RESTART_POLICY}
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=${UMASK}
-    volumes:
-      - ${CONFIG_PATH}/jellyfin:/config
-      - ${DATA_PATH}/media:/data/media
-    ports:
-      - 8096:8096/tcp
-      - 7359:7359/udp
+  # jellyfin:
+  #   image: jellyfin/jellyfin:latest
+  #   container_name: jellyfin
+  #   restart: ${RESTART_POLICY}
+  #   environment:
+  #     - PUID=${PUID}
+  #     - PGID=${PGID}
+  #     - TZ=${TZ}
+  #     - UMASK=${UMASK}
+  #   volumes:
+  #     - ${CONFIG_PATH}/jellyfin:/config
+  #     - ${DATA_PATH}/media:/data/media
+  #   ports:
+  #     - 8096:8096/tcp
+  #     - 7359:7359/udp
 
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
@@ -96,12 +96,7 @@ services:
     container_name: plex
     restart: unless-stopped
     network_mode: host
-    environment:
-      - TZ=${TZ}
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - UMASK=${UMASK}
-      - PLEX_CLAIM= #optional
+
     ports:
       - 32400:32400
     devices:
@@ -118,3 +113,17 @@ services:
       - TZ=${TZ}
     volumes:
       - ${CONFIG_PATH}/recyclarr:/config
+
+  services:
+    pulsarr:
+      image: lakker/pulsarr:latest
+      container_name: pulsarr
+      ports:
+        - 3003:3003
+      volumes:
+        - ${DATA_PATH}:/app/data
+        - /docker/servarr/.env:/app/.env
+      restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - baseUrl=http://pulsarr
