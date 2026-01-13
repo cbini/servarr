@@ -95,44 +95,37 @@ services:
       - TZ=${TZ}
       - baseUrl=http://pulsarr
 
-  whisparr:
-    container_name: whisparr
-    image: ghcr.io/hotio/whisparr
-    ports:
-      - 6969:6969
-    environment:
-      - TZ=${TZ}
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - UMASK=${UMASK}
-      - WEBUI_PORTS=6969/tcp
-    volumes:
-      - ${CONFIG_PATH}/whisparr:/config
-      - ${DATA_PATH}:/data
+  # whisparr:
+  #   container_name: whisparr
+  #   image: ghcr.io/hotio/whisparr
+  #   ports:
+  #     - 6969:6969
+  #   environment:
+  #     - TZ=${TZ}
+  #     - PUID=${PUID}
+  #     - PGID=${PGID}
+  #     - UMASK=${UMASK}
+  #     - WEBUI_PORTS=6969/tcp
+  #   volumes:
+  #     - ${CONFIG_PATH}/whisparr:/config
+  #     - ${DATA_PATH}:/data
 
-  stash:
-    image: stashapp/stash:latest
-    container_name: stash
-    restart: unless-stopped
-    # ports:
-    #   - 9999:9999
-    network_mode: host
-    environment:
-      - STASH_STASH=/data/
-      - STASH_GENERATED=/generated/
-      - STASH_METADATA=/metadata/
-      - STASH_CACHE=/cache/
-      - STASH_PORT=9999
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_PATH}/stash/metadata:/metadata
-      - ${CONFIG_PATH}/stash/cache:/cache
-      - ${CONFIG_PATH}/stash/blobs:/blobs
-      - ${CONFIG_PATH}/stash/generated:/generated
-      - ${CONFIG_PATH}/stash/config:/root/.stash
-      - ${DATA_PATH}:/data
-    # logging:
-    #   driver: "json-file"
-    #   options:
-    #     max-file: "10"
-    #     max-size: "2m"
+  # stash:
+  #   image: stashapp/stash:latest
+  #   container_name: stash
+  #   restart: unless-stopped
+  #   network_mode: host
+  #   environment:
+  #     - STASH_STASH=/data/
+  #     - STASH_GENERATED=/generated/
+  #     - STASH_METADATA=/metadata/
+  #     - STASH_CACHE=/cache/
+  #     - STASH_PORT=9999
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - ${CONFIG_PATH}/stash/metadata:/metadata
+  #     - ${CONFIG_PATH}/stash/cache:/cache
+  #     - ${CONFIG_PATH}/stash/blobs:/blobs
+  #     - ${CONFIG_PATH}/stash/generated:/generated
+  #     - ${CONFIG_PATH}/stash/config:/root/.stash
+  #     - ${DATA_PATH}:/data
