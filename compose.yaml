@@ -46,36 +46,6 @@ services:
     ports:
       - 7878:7878
 
-  # jellyseerr:
-  #  image: fallenbagel/jellyseerr:latest
-  #  container_name: jellyseerr
-  #  restart: ${RESTART_POLICY}
-  #  environment:
-  #    - PUID=${PUID}
-  #    - PGID=${PGID}
-  #    - TZ=${TZ}
-  #    - UMASK=${UMASK}
-  #  volumes:
-  #    - ${CONFIG_PATH}/jellyseerr:/app/config
-  #  ports:
-  #    - 5055:5055
-
-  # jellyfin:
-  #   image: jellyfin/jellyfin:latest
-  #   container_name: jellyfin
-  #   restart: ${RESTART_POLICY}
-  #   environment:
-  #     - PUID=${PUID}
-  #     - PGID=${PGID}
-  #     - TZ=${TZ}
-  #     - UMASK=${UMASK}
-  #   volumes:
-  #     - ${CONFIG_PATH}/jellyfin:/config
-  #     - ${DATA_PATH}/media:/data/media
-  #   ports:
-  #     - 8096:8096/tcp
-  #     - 7359:7359/udp
-
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
@@ -86,6 +56,7 @@ services:
       - PGID=${PGID}
       - UMASK=${UMASK}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_PATH}/sabnzbd:/config
       - ${DATA_PATH}/usenet:/data/usenet
     ports:
@@ -96,9 +67,6 @@ services:
     container_name: plex
     restart: unless-stopped
     network_mode: host
-
-    ports:
-      - 32400:32400
     devices:
      - /dev/dri:/dev/dri # QuickSync
     volumes:
@@ -126,3 +94,45 @@ services:
     environment:
       - TZ=${TZ}
       - baseUrl=http://pulsarr
+
+  whisparr:
+    container_name: whisparr
+    image: ghcr.io/hotio/whisparr
+    ports:
+      - 6969:6969
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - WEBUI_PORTS=6969/tcp
+    volumes:
+      - ${CONFIG_PATH}/whisparr:/config
+      - ${DATA_PATH}:/data
+
+  stash:
+    image: stashapp/stash:latest
+    container_name: stash
+    restart: unless-stopped
+    # ports:
+    #   - 9999:9999
+    network_mode: host
+    environment:
+      - STASH_STASH=/data/
+      - STASH_GENERATED=/generated/
+      - STASH_METADATA=/metadata/
+      - STASH_CACHE=/cache/
+      - STASH_PORT=9999
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/stash/metadata:/metadata
+      - ${CONFIG_PATH}/stash/cache:/cache
+      - ${CONFIG_PATH}/stash/blobs:/blobs
+      - ${CONFIG_PATH}/stash/generated:/generated
+      - ${CONFIG_PATH}/stash/config:/root/.stash
+      - ${DATA_PATH}:/data
+    # logging:
+    #   driver: "json-file"
+    #   options:
+    #     max-file: "10"
+    #     max-size: "2m"
