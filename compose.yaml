@@ -95,6 +95,17 @@ services:
       - TZ=${TZ}
       - baseUrl=http://pulsarr
 
+  web:
+    image: markbeep/audiobookrequest:latest
+    container_name: audiobookrequest
+    ports:
+      - 4242:4242
+    volumes:
+      - ${CONFIG_PATH}/audiobookrequest:/config
+    environment:
+      - ABR_APP__PORT=4242
+
+
   # whisparr:
   #   container_name: whisparr
   #   image: ghcr.io/hotio/whisparr
