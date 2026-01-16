@@ -105,6 +105,17 @@ services:
     environment:
       - ABR_APP__PORT=4242
 
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    ports:
+      - 13378:80
+    volumes:
+      - ${CONFIG_PATH}/audiobookshelf/config:/config
+      - ${CONFIG_PATH}/audiobookshelf/metadata:/metadata
+      - ${DATA_PATH}:/audiobooks
+      - ${DATA_PATH}:/podcasts
+    environment:
+      - TZ=${TZ}
 
   # whisparr:
   #   container_name: whisparr
