@@ -73,15 +73,6 @@ services:
       - ${CONFIG_PATH}/plex:/config
       - ${DATA_PATH}:/data
 
-  recyclarr:
-    image: ghcr.io/recyclarr/recyclarr
-    container_name: recyclarr
-    user: 1000:1000
-    environment:
-      - TZ=${TZ}
-    volumes:
-      - ${CONFIG_PATH}/recyclarr:/config
-
   pulsarr:
     image: lakker/pulsarr:latest
     container_name: pulsarr
@@ -95,7 +86,17 @@ services:
       - TZ=${TZ}
       - baseUrl=http://pulsarr
 
-  web:
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr
+    container_name: recyclarr
+    user: 1000:1000
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ${CONFIG_PATH}/recyclarr:/config
+    profiles: [donotstart]
+
+  audiobookrequest:
     image: markbeep/audiobookrequest:latest
     container_name: audiobookrequest
     ports:
@@ -104,6 +105,7 @@ services:
       - ${CONFIG_PATH}/audiobookrequest:/config
     environment:
       - ABR_APP__PORT=4242
+    profiles: [donotstart]
 
   audiobookshelf:
     image: ghcr.io/advplyr/audiobookshelf:latest
@@ -116,38 +118,41 @@ services:
       - ${DATA_PATH}:/podcasts
     environment:
       - TZ=${TZ}
+    profiles: [donotstart]
 
-  # whisparr:
-  #   container_name: whisparr
-  #   image: ghcr.io/hotio/whisparr
-  #   ports:
-  #     - 6969:6969
-  #   environment:
-  #     - TZ=${TZ}
-  #     - PUID=${PUID}
-  #     - PGID=${PGID}
-  #     - UMASK=${UMASK}
-  #     - WEBUI_PORTS=6969/tcp
-  #   volumes:
-  #     - ${CONFIG_PATH}/whisparr:/config
-  #     - ${DATA_PATH}:/data
+  whisparr:
+    container_name: whisparr
+    image: ghcr.io/hotio/whisparr
+    ports:
+      - 6969:6969
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - WEBUI_PORTS=6969/tcp
+    volumes:
+      - ${CONFIG_PATH}/whisparr:/config
+      - ${DATA_PATH}:/data
+    profiles: [donotstart]
 
-  # stash:
-  #   image: stashapp/stash:latest
-  #   container_name: stash
-  #   restart: unless-stopped
-  #   network_mode: host
-  #   environment:
-  #     - STASH_STASH=/data/
-  #     - STASH_GENERATED=/generated/
-  #     - STASH_METADATA=/metadata/
-  #     - STASH_CACHE=/cache/
-  #     - STASH_PORT=9999
-  #   volumes:
-  #     - /etc/localtime:/etc/localtime:ro
-  #     - ${CONFIG_PATH}/stash/metadata:/metadata
-  #     - ${CONFIG_PATH}/stash/cache:/cache
-  #     - ${CONFIG_PATH}/stash/blobs:/blobs
-  #     - ${CONFIG_PATH}/stash/generated:/generated
-  #     - ${CONFIG_PATH}/stash/config:/root/.stash
-  #     - ${DATA_PATH}:/data
+  stash:
+    image: stashapp/stash:latest
+    container_name: stash
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - STASH_STASH=/data/
+      - STASH_GENERATED=/generated/
+      - STASH_METADATA=/metadata/
+      - STASH_CACHE=/cache/
+      - STASH_PORT=9999
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/stash/metadata:/metadata
+      - ${CONFIG_PATH}/stash/cache:/cache
+      - ${CONFIG_PATH}/stash/blobs:/blobs
+      - ${CONFIG_PATH}/stash/generated:/generated
+      - ${CONFIG_PATH}/stash/config:/root/.stash
+      - ${DATA_PATH}:/data
+    profiles: [donotstart]
