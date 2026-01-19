@@ -86,6 +86,14 @@ services:
       - TZ=${TZ}
       - baseUrl=http://pulsarr
 
+  actualbudget:
+    image: docker.io/actualbudget/actual-server:latest
+    ports:
+      - 5006:5006
+    volumes:
+      - ${CONFIG_PATH}/actualbudget:/data
+    restart: unless-stopped
+
   recyclarr:
     image: ghcr.io/recyclarr/recyclarr
     container_name: recyclarr
