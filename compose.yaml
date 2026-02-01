@@ -1,18 +1,14 @@
 services:
-  prowlarr:
-    image: ghcr.io/hotio/prowlarr:release
-    container_name: prowlarr
-    restart: ${RESTART_POLICY}
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=${UMASK}
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    devices:
+     - /dev/dri:/dev/dri # QuickSync
     volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_PATH}/prowlarr:/config
-    ports:
-      - 9696:9696
+      - ${CONFIG_PATH}/plex:/config
+      - ${DATA_PATH}:/data
 
   sonarr:
     image: ghcr.io/hotio/sonarr:release
@@ -46,6 +42,21 @@ services:
     ports:
       - 7878:7878
 
+  prowlarr:
+    image: ghcr.io/hotio/prowlarr:release
+    container_name: prowlarr
+    restart: ${RESTART_POLICY}
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/prowlarr:/config
+    ports:
+      - 9696:9696
+
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
@@ -62,17 +73,6 @@ services:
     ports:
       - 8080:8080
 
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex
-    restart: unless-stopped
-    network_mode: host
-    devices:
-     - /dev/dri:/dev/dri # QuickSync
-    volumes:
-      - ${CONFIG_PATH}/plex:/config
-      - ${DATA_PATH}:/data
-
   pulsarr:
     image: lakker/pulsarr:latest
     container_name: pulsarr
@@ -86,6 +86,20 @@ services:
       - TZ=${TZ}
       - baseUrl=http://pulsarr
 
+  profilarr:
+    image: santiagosayshey/profilarr:latest
+    container_name: profilarr
+    ports:
+      - 6868:6868
+    volumes:
+      - ${CONFIG_PATH}/profilarr:/config
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+    restart: unless-stopped
+
   actualbudget:
     image: docker.io/actualbudget/actual-server:latest
     ports:
@@ -93,6 +107,7 @@ services:
     volumes:
       - ${CONFIG_PATH}/actualbudget:/data
     restart: unless-stopped
+    profiles: [donotstart]
 
   recyclarr:
     image: ghcr.io/recyclarr/recyclarr
