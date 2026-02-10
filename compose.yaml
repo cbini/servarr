@@ -100,6 +100,24 @@ services:
       - UMASK=${UMASK}
     restart: unless-stopped
 
+  readmeabook:
+    image: ghcr.io/kikootwo/readmeabook:latest
+    container_name: readmeabook
+    restart: unless-stopped
+    ports:
+      - 3030:3030
+    volumes:
+      - ${DATA_PATH}/usenet:/downloads
+      - ${DATA_PATH}/media/audiobooks:/media
+      - ${CONFIG_PATH}/readmeabook/config:/app/config
+      - ${CONFIG_PATH}/readmeabook/cache:/app/cache
+      - ${CONFIG_PATH}/readmeabook/pgdata:/var/lib/postgresql/data
+      - ${CONFIG_PATH}/readmeabook/redis:/var/lib/redis
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      # PUBLIC_URL: "https://audiobooks.example.com"  # Required for OAuth
+
   actualbudget:
     image: docker.io/actualbudget/actual-server:latest
     ports:
