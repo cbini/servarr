@@ -117,6 +117,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       # PUBLIC_URL: "https://audiobooks.example.com"  # Required for OAuth
+    profiles: [donotstart]
 
   actualbudget:
     image: docker.io/actualbudget/actual-server:latest
