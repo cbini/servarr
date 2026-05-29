@@ -73,17 +73,17 @@ services:
     ports:
       - 8080:8080
 
-    pulsarr:
-      image: lakker/pulsarr:latest
-      container_name: pulsarr
-      ports:
-        - 3003:3003
-      volumes:
-        - ${CONFIG_PATH}/pulsarr:/app/data
-      restart: unless-stopped
-      environment:
-        - TZ=${TZ}
-        - baseUrl=http://localhost:3003
+  pulsarr:
+    image: lakker/pulsarr:latest
+    container_name: pulsarr
+    ports:
+      - 3003:3003
+    volumes:
+      - ${CONFIG_PATH}/pulsarr:/app/data
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - baseUrl=http://localhost:3003
 
   profilarr:
     image: santiagosayshey/profilarr:latest
