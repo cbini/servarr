@@ -83,7 +83,6 @@ services:
     restart: unless-stopped
     environment:
       - TZ=${TZ}
-      - baseUrl=http://localhost:3003
 
   profilarr:
     image: santiagosayshey/profilarr:latest
