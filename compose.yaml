@@ -10,15 +10,23 @@ services:
       - ${CONFIG_PATH}/plex:/config
       - ${DATA_PATH}:/data
 
+  tunarr:
+    image: chrisbenincasa/tunarr:latest
+    container_name: tunarr
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ=${TZ}
+    ports:
+      - 8000:8000
+    volumes:
+      - ${CONFIG_PATH}/tunarr-data:/config/tunarr
+
   sonarr:
     image: ghcr.io/hotio/sonarr:release
     container_name: sonarr
     restart: ${RESTART_POLICY}
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
       - TZ=${TZ}
-      - UMASK=${UMASK}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_PATH}/sonarr:/config
@@ -85,7 +93,7 @@ services:
       - TZ=${TZ}
 
   profilarr:
-    image: santiagosayshey/profilarr:latest
+    image: ghcr.io/dictionarry-hub/profilarr:latest
     container_name: profilarr
     ports:
       - 6868:6868
