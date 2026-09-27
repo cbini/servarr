@@ -9,17 +9,9 @@ services:
     volumes:
       - ${CONFIG_PATH}/plex:/config
       - ${DATA_PATH}:/data
-
-  tunarr:
-    image: chrisbenincasa/tunarr:latest
-    container_name: tunarr
-    restart: ${RESTART_POLICY}
     environment:
-      - TZ=${TZ}
-    ports:
-      - 8000:8000
-    volumes:
-      - ${CONFIG_PATH}/tunarr-data:/config/tunarr
+      - PUID=${PUID}
+      - PGID=${PGID}
 
   sonarr:
     image: ghcr.io/hotio/sonarr:release
@@ -105,6 +97,18 @@ services:
       - PGID=${PGID}
       - UMASK=${UMASK}
     restart: unless-stopped
+
+  tunarr:
+    image: chrisbenincasa/tunarr:latest
+    container_name: tunarr
+    restart: ${RESTART_POLICY}
+    environment:
+      - TZ=${TZ}
+    ports:
+      - 8000:8000
+    volumes:
+      - ${CONFIG_PATH}/tunarr-data:/config/tunarr
+    profiles: [donotstart]
 
   readmeabook:
     image: ghcr.io/kikootwo/readmeabook:latest
