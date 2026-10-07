@@ -109,19 +109,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_PATH}/homeassistant:/config
 
-  mosquitto:
-    image: eclipse-mosquitto:2
-    container_name: mosquitto
-    restart: ${RESTART_POLICY}
-    ports:
-      - 1883:1883
-    configs:
-      - source: mosquitto_conf
-        target: /mosquitto/config/mosquitto.conf
-    volumes:
-      - ${CONFIG_PATH}/mosquitto/config:/mosquitto/config
-      - ${CONFIG_PATH}/mosquitto/data:/mosquitto/data
-
   tunarr:
     image: chrisbenincasa/tunarr:latest
     container_name: tunarr
@@ -232,11 +219,3 @@ services:
       - ${CONFIG_PATH}/stash/config:/root/.stash
       - ${DATA_PATH}:/data
     profiles: [donotstart]
-configs:
-  mosquitto_conf:
-    content: |
-      listener 1883
-      allow_anonymous false
-      password_file /mosquitto/config/passwd
-      persistence true
-      persistence_location /mosquitto/data/
