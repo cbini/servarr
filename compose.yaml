@@ -98,17 +98,6 @@ services:
       - UMASK=${UMASK}
     restart: unless-stopped
 
-  homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
-    container_name: homeassistant
-    restart: ${RESTART_POLICY}
-    network_mode: host # 8123; host needed for LAN discovery
-    environment:
-      - TZ=${TZ}
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_PATH}/homeassistant:/config
-
   tunarr:
     image: chrisbenincasa/tunarr:latest
     container_name: tunarr
