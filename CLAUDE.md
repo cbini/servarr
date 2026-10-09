@@ -20,4 +20,6 @@ Home Assistant is deliberately **not** in this stack: it runs as Home Assistant 
 - **Google Home** connects through HA's manual `google_assistant` integration (Cloud-to-Cloud project in the Google Home Developer Console, service-account key at `/config/SERVICE_ACCOUNT.json`, `report_state: true`). Nabu Casa is intentionally not used.
 - **Public access** is Tailscale Funnel via the HA Tailscale app (`share_homeassistant: funnel`); HA trusts `127.0.0.1` as a reverse proxy.
 
-The Proxmox `local-lvm` thin pool is overcommitted, so check `lvs pve/data` usage before adding VM disks.
+The Proxmox host is reachable as `ssh pve` (root, 192.168.0.86). Its `local-lvm` thin pool is overcommitted, so check `lvs pve/data` usage before adding VM disks, and give new VM disks `discard=on,ssd=1` so guest trims free pool space.
+
+Backups: a nightly vzdump job (02:30, snapshot, zstd, keep 7 daily + 4 weekly) backs up VMs 100, 102 and 104 to the `omv-backup` NFS storage, which is OMV's `/export/proxmox` share on the USB drive (exported only to the host). The OMV VM itself is excluded because it serves that share, and the media under `DATA_PATH` has no backup.
