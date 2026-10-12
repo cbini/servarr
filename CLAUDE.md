@@ -22,4 +22,4 @@ Home Assistant is deliberately **not** in this stack: it runs as Home Assistant 
 
 The Proxmox host is reachable as `ssh pve` (root, 192.168.0.86). Its `local-lvm` thin pool is overcommitted, so check `lvs pve/data` usage before adding VM disks, and give new VM disks `discard=on,ssd=1` so guest trims free pool space.
 
-Backups: nightly vzdump jobs (02:30, snapshot, zstd) back up VMs 102 and 104 (keep 7 daily + 4 weekly) and VM 100 (keep 3 daily + 2 weekly, since its full-disk backups are ~35–40 GB) to the `omv-backup` NFS storage, which is OMV's `/export/proxmox` share on the USB drive (exported only to the host). The OMV VM itself is excluded because it serves that share, and the media under `DATA_PATH` has no backup.
+Backups: nightly vzdump jobs (02:30, snapshot, zstd) back up VMs 102 and 104 (keep 7 daily + 4 weekly) and VM 100 (keep 1 daily + 1 weekly, since its full-disk backups are ~35–40 GB) to the `omv-backup` NFS storage, which is OMV's `/export/proxmox` share on the USB drive (exported only to the host). The OMV VM itself is excluded because it serves that share, and the media under `DATA_PATH` has no backup.
