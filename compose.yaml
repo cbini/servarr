@@ -73,7 +73,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_PATH}/sabnzbd:/config
-      - ${DATA_PATH}:/data # full tree: the audiobooks category writes straight to /data/media/audiobooks
+      - ${DATA_PATH}/usenet:/data/usenet
     ports:
       - 8080:8080
 
