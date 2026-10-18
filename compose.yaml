@@ -18,7 +18,10 @@ services:
     container_name: sonarr
     restart: ${RESTART_POLICY}
     environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
       - TZ=${TZ}
+      - UMASK=${UMASK}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_PATH}/sonarr:/config
