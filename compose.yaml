@@ -12,6 +12,7 @@ services:
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
+      - TZ=${TZ}
 
   sonarr:
     image: ghcr.io/hotio/sonarr:release
@@ -113,25 +114,6 @@ services:
       - ${CONFIG_PATH}/tunarr-data:/config/tunarr
     profiles: [donotstart]
 
-  readmeabook:
-    image: ghcr.io/kikootwo/readmeabook:latest
-    container_name: readmeabook
-    restart: unless-stopped
-    ports:
-      - 3030:3030
-    volumes:
-      - ${DATA_PATH}/usenet:/downloads
-      - ${DATA_PATH}/media/audiobooks:/media
-      - ${CONFIG_PATH}/readmeabook/config:/app/config
-      - ${CONFIG_PATH}/readmeabook/cache:/app/cache
-      - ${CONFIG_PATH}/readmeabook/pgdata:/var/lib/postgresql/data
-      - ${CONFIG_PATH}/readmeabook/redis:/var/lib/redis
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      # PUBLIC_URL: "https://audiobooks.example.com"  # Required for OAuth
-    profiles: [donotstart]
-
   actualbudget:
     image: docker.io/actualbudget/actual-server:latest
     ports:
@@ -151,29 +133,33 @@ services:
       - ${CONFIG_PATH}/recyclarr:/config
     profiles: [donotstart]
 
-  audiobookrequest:
-    image: markbeep/audiobookrequest:latest
-    container_name: audiobookrequest
-    ports:
-      - 4242:4242
-    volumes:
-      - ${CONFIG_PATH}/audiobookrequest:/config
+  shelfmark:
+    image: ghcr.io/calibrain/shelfmark-lite:latest # lite = no bundled Chromium; full image needs 2 GB RAM
+    container_name: shelfmark
+    restart: ${RESTART_POLICY}
     environment:
-      - ABR_APP__PORT=4242
-    profiles: [donotstart]
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - INGEST_DIR=/data/media/audiobooks
+    volumes:
+      - ${CONFIG_PATH}/shelfmark:/config
+      - ${DATA_PATH}:/data # same path as SABnzbd so usenet imports resolve
+    ports:
+      - 8084:8084
 
   audiobookshelf:
     image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    restart: ${RESTART_POLICY}
     ports:
       - 13378:80
     volumes:
       - ${CONFIG_PATH}/audiobookshelf/config:/config
       - ${CONFIG_PATH}/audiobookshelf/metadata:/metadata
-      - ${DATA_PATH}:/audiobooks
-      - ${DATA_PATH}:/podcasts
+      - ${DATA_PATH}:/data
     environment:
       - TZ=${TZ}
-    profiles: [donotstart]
 
   whisparr:
     container_name: whisparr
