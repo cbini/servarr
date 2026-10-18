@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Infrastructure (not in the repo)
 
-The stack runs in a Proxmox VM named `servarr` (VM 100). `DATA_PATH` is an NFS mount served by a separate OpenMediaVault VM (VM 101) from a USB-attached 8 TB (7.3 TiB) ext4 drive. Disk-space questions therefore need checking on the OMV VM, not here; this Mac only holds the compose file.
+The stack runs in a Proxmox VM named `servarr` (VM 100), Ubuntu 24.04 with the host's Intel N150 iGPU passed through for Plex QuickSync (`/dev/dri`, verified VAAPI decode+encode). It runs Ubuntu's HWE kernel (`linux-generic-hwe-24.04`, 7.0 as of 2026-10); the N150 GPU (`8086:46d4`) isn't supported by the 24.04 GA 6.8 kernel, so keep the HWE kernel rather than installing mainline builds, which get no security updates. To confirm hardware transcoding, force a video transcode and look for `hardware transcoding: final decoder: vaapi, final encoder: vaapi` in Plex's log; `final decoder: , final encoder:` is normal for audio-only transcodes. `DATA_PATH` is an NFS mount served by a separate OpenMediaVault VM (VM 101) from a USB-attached 8 TB (7.3 TiB) ext4 drive. Disk-space questions therefore need checking on the OMV VM, not here; this Mac only holds the compose file.
 
 Docker is not installed on this Mac. The VM is reachable as `ssh servarr`, with the deployed checkout at `~/servarr` (real `.env` lives there). Validate local edits there before committing with `ssh servarr 'cd ~/servarr && docker compose -f - config -q' < compose.yaml`; deploy with `git pull && docker compose up -d --remove-orphans`.
 
