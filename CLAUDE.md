@@ -8,6 +8,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Config vs data.** Each service's state goes under `${CONFIG_PATH}/<service>`. Media and downloads live under a single `${DATA_PATH}` tree, mounted as `/data` in every *arr container so hardlinks work between `/data/usenet` (SABnzbd downloads) and `/data/media/*` (library). Keep new services on the same `/data` mount, not a separate path, or imports fall back to copying.
 - **`profiles: [donotstart]`** marks services that are kept in the file but not run by default. Add new experimental services there rather than deleting them.
 
+## Audiobooks
+
+- **Shelfmark** (lite image, `:8084`) is the search/request app: it searches Prowlarr, sends to SABnzbd category `books` (`/data/usenet/complete/books`), then renames and moves the result into `/data/media/audiobooks` using its `{Author}/{Series/}…` template. Readarr is dead; ReadMeABook and AudioBookRequest were dropped in favour of it.
+- **Audiobookshelf** (`:13378`) is the library. Its one library has two folders: `/data/media/audiobooks` (Shelfmark) and `/data/usenet/complete/audiobooks` (manual downloads), so nothing has to be moved by hand.
+- **abook.link** is an invite-only SMF forum, not an indexer: no API and it can't go in Prowlarr. Posts give a search code and an archive password. `scripts/abook "CODE" [PASSWORD] ["Author - Title"]` (run on servarr) finds the code on NZBKing and has SABnzbd fetch it into category `audiobooks` using SABnzbd's add-only `nzb_key`. NZBKing has no API, so the script parses its search page and refuses when a code matches more than one post; NZBIndex doesn't cover these codes.
+- SABnzbd deliberately mounts only `/data/usenet`, so no category may point into `/data/media`.
+
 ## Infrastructure (not in the repo)
 
 The stack runs in a Proxmox VM named `servarr` (VM 100), Ubuntu 24.04 with the host's Intel N150 iGPU passed through for Plex QuickSync (`/dev/dri`, verified VAAPI decode+encode). It runs Ubuntu's HWE kernel (`linux-generic-hwe-24.04`, 7.0 as of 2026-10); the N150 GPU (`8086:46d4`) isn't supported by the 24.04 GA 6.8 kernel, so keep the HWE kernel rather than installing mainline builds, which get no security updates. To confirm hardware transcoding, force a video transcode and look for `hardware transcoding: final decoder: vaapi, final encoder: vaapi` in Plex's log; `final decoder: , final encoder:` is normal for audio-only transcodes. `DATA_PATH` is an NFS mount served by a separate OpenMediaVault VM (VM 101) from a USB-attached 8 TB (7.3 TiB) ext4 drive. Disk-space questions therefore need checking on the OMV VM, not here; this Mac only holds the compose file.
