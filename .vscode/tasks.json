@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "abook: queue abook.link post",
+      "detail": "Look up an abook.link code on NZBKing and queue it in SABnzbd (runs scripts/abook on servarr)",
+      "type": "process",
+      "command": "ssh",
+      "args": [
+        "servarr",
+        "~/servarr/scripts/abook",
+        "'${input:abookCode}'",
+        "'${input:abookPassword}'",
+        "'${input:abookName}'"
+      ],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "abookCode",
+      "type": "promptString",
+      "description": "Code from the post, as shown (e.g. abook.link - f5135574dfc3a2f5a7ee)"
+    },
+    {
+      "id": "abookPassword",
+      "type": "promptString",
+      "description": "Archive password (leave empty if none)",
+      "password": true
+    },
+    {
+      "id": "abookName",
+      "type": "promptString",
+      "description": "Name, e.g. Author - Title (optional; empty uses the code)"
+    }
+  ]
+}

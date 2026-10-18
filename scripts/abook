@@ -20,7 +20,7 @@ password = sys.argv[2] if len(sys.argv) > 2 else ""
 # Posts show codes like "abook.link - f5135574dfc3a2f5a7ee" or "abook.ws ~ BBAKRO-TPWRBK (1974)";
 # NZBKing reads " - word" as an exclusion, so search the bare code only.
 code = re.sub(r"^abook\.\w+\s*[-~]\s*|\s*\(\d{4}\)$", "", code.strip())
-name = sys.argv[3] if len(sys.argv) == 4 else code
+name = (sys.argv[3] if len(sys.argv) == 4 else "") or code
 
 search = "https://nzbking.com/search/?" + urllib.parse.urlencode({"q": code})
 req = urllib.request.Request(search, headers={"User-Agent": "Mozilla/5.0"})
