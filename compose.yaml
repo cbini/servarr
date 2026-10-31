@@ -87,9 +87,14 @@ services:
       - /dev/net/tun:/dev/net/tun
     environment:
       - TZ=${TZ}
-      - VPN_SERVICE_PROVIDER=privado # bundled with Newshosting; OpenVPN, no port forwarding
-      - OPENVPN_USER=${PRIVADO_USER}
-      - OPENVPN_PASSWORD=${PRIVADO_PASSWORD}
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${PROTON_WIREGUARD_KEY}
+      - SERVER_COUNTRIES=United States
+      - PORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
+      # push the forwarded port into qbittorrent (needs its "bypass auth on localhost" on; only gluetun's namespace is localhost)
+      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh -c 'wget -O- --retry-connrefused --post-data "json={\"listen_port\":{{PORTS}}}" http://127.0.0.1:8081/api/v2/app/setPreferences 2>&1'
     ports:
       - 8081:8081 # qbittorrent web UI (8080 is SABnzbd)
 
