@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **`.env` is required and untracked.** Every service reads `CONFIG_PATH`, `DATA_PATH`, `TZ`, `PUID`, `PGID`, `UMASK`, `RESTART_POLICY` from it. Do not hardcode paths in `compose.yaml`.
 - **Config vs data.** Each service's state goes under `${CONFIG_PATH}/<service>`. Media and downloads live under a single `${DATA_PATH}` tree, mounted as `/data` in every *arr container so hardlinks work between `/data/usenet` (SABnzbd downloads) and `/data/media/*` (library). Keep new services on the same `/data` mount, not a separate path, or imports fall back to copying.
+- **Torrents** go through **qBittorrent** (`:8081`), which shares **gluetun**'s network namespace so it has no route except the VPN; its web UI port is published on gluetun. The VPN is PrivadoVPN (bundled with Newshosting, OpenVPN, credentials `PRIVADO_USER`/`PRIVADO_PASSWORD` in `.env`), which has no port forwarding. Downloads go to `/data/torrents`. The *arrs reach it at `gluetun:8081`.
 - **`profiles: [donotstart]`** marks services that are kept in the file but not run by default. Add new experimental services there rather than deleting them.
 
 ## Audiobooks

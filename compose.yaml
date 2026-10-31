@@ -77,6 +77,41 @@ services:
     ports:
       - 8080:8080
 
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: ${RESTART_POLICY}
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=${TZ}
+      - VPN_SERVICE_PROVIDER=privado # bundled with Newshosting; OpenVPN, no port forwarding
+      - OPENVPN_USER=${PRIVADO_USER}
+      - OPENVPN_PASSWORD=${PRIVADO_PASSWORD}
+    ports:
+      - 8081:8081 # qbittorrent web UI (8080 is SABnzbd)
+
+  qbittorrent:
+    image: ghcr.io/hotio/qbittorrent:release
+    container_name: qbittorrent
+    restart: ${RESTART_POLICY}
+    network_mode: service:gluetun # no traffic leaves except through the VPN
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK=${UMASK}
+      - WEBUI_PORTS=8081/tcp
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_PATH}/qbittorrent:/config
+      - ${DATA_PATH}:/data # same mount as the *arrs so /data/torrents imports hardlink
+
   pulsarr:
     image: lakker/pulsarr:latest
     container_name: pulsarr
