@@ -101,6 +101,7 @@ services:
     depends_on:
       gluetun:
         condition: service_healthy
+        restart: true # rejoin gluetun's network when compose restarts it
     environment:
       - PUID=${PUID}
       - PGID=${PGID}

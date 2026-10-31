@@ -14,6 +14,18 @@
       "problemMatcher": []
     },
     {
+      "label": "restart: one service on servarr",
+      "detail": "docker compose restart a service (gluetun also restarts qbittorrent, which shares its network)",
+      "type": "process",
+      "command": "ssh",
+      "args": [
+        "servarr",
+        "cd ~/servarr && docker compose restart ${input:service} && docker compose ps"
+      ],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
       "label": "abook: queue abook.link post",
       "detail": "Look up an abook.link code on NZBKing and queue it in SABnzbd (runs scripts/abook on servarr)",
       "type": "process",
@@ -30,6 +42,15 @@
     }
   ],
   "inputs": [
+    {
+      "id": "service",
+      "type": "pickString",
+      "description": "Service to restart",
+      "options": [
+        "audiobookshelf", "gluetun", "plex", "profilarr", "prowlarr", "pulsarr",
+        "qbittorrent", "radarr", "sabnzbd", "shelfmark", "sonarr"
+      ]
+    },
     {
       "id": "abookCode",
       "type": "promptString",
