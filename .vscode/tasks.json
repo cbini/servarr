@@ -2,6 +2,18 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "deploy: pull and up on servarr",
+      "detail": "git pull the pushed compose config on servarr and apply it with docker compose up -d",
+      "type": "process",
+      "command": "ssh",
+      "args": [
+        "servarr",
+        "cd ~/servarr && git pull --ff-only && docker compose up -d --remove-orphans"
+      ],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
       "label": "abook: queue abook.link post",
       "detail": "Look up an abook.link code on NZBKing and queue it in SABnzbd (runs scripts/abook on servarr)",
       "type": "process",
