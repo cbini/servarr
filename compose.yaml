@@ -183,7 +183,8 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - INGEST_DIR=/data/media/audiobooks
+      - INGEST_DIR=/data/media/books # ebooks (Anna's Archive); legacy name for DESTINATION, locks the UI field
+      - DESTINATION_AUDIOBOOK=/data/media/audiobooks
     volumes:
       - ${CONFIG_PATH}/shelfmark:/config
       - ${DATA_PATH}:/data # same path as SABnzbd so usenet imports resolve
