@@ -175,9 +175,10 @@ services:
     profiles: [donotstart]
 
   shelfmark:
-    image: ghcr.io/calibrain/shelfmark-lite:latest # lite = no bundled Chromium; full image needs 2 GB RAM
+    image: ghcr.io/calibrain/shelfmark:latest # full image: bundled Chromium for Anna's Archive challenges; measured ~150 MB idle, ~900 MB peak
     container_name: shelfmark
     restart: ${RESTART_POLICY}
+    mem_limit: 1500m
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
