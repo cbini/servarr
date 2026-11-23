@@ -1,0 +1,411 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pymupdf"]
+# ///
+"""Clean a book PDF into a .txt for Abogen (or any TTS).
+
+Usage: scripts/pdf2tts book.pdf [out.txt]      (default out: book.txt)
+       scripts/pdf2tts --self-test
+
+Removes running headers/footers (blocks repeated at the top or bottom of 3+
+pages), page numbers, captions, footnotes and OCR crumbs, rejoins hyphenated words and paragraphs
+split across lines or pages, and starts each chapter/section with an Abogen
+<<CHAPTER_MARKER:...>> line. Front matter, contents, notes and index get their
+own markers so they can be unticked in Abogen's chapter list.
+
+Paragraph breaks follow the print's first-line indents when the book uses them
+(block quotes become their own paragraphs); otherwise a block ending in sentence
+punctuation ends a paragraph. Scanned books keep OCR errors (a lost drop-cap letter,
+misread words), so proofread the output for a clean listen.
+"""
+import re
+import sys
+from collections import Counter
+from difflib import SequenceMatcher
+from pathlib import Path
+
+HEADER_MIN_PAGES = 3
+NUM = r"(\d+|[ivxlc]+|[a-z]+teen|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|(twenty|thirty|forty|fifty)([- ]?[a-z]+)?)"
+HEADING = re.compile(
+    rf"(chapter|part|book|appendix)\s+{NUM}([:.]\s*.*)?"
+    r"|prologue|epilogue|introduction|preface|foreword|afterword|conclusion|contents"
+    r"|acknowledge?ments?|(bibliographic(al)?\s+)?notes|bibliography|index|glossary",
+    re.I,
+)
+CREDIT = re.compile(r"\b(photo(graph)?s?|illustrations?)\s+(by|courtesy)\b|\bcourtesy of\b", re.I)
+
+
+# Line tags read_blocks() puts at the start of a line when the book indents its paragraphs.
+START, QUOTE = "\x01", "\x02"  # paragraph's indented first line; block quote / verse (indented further)
+
+
+def plain(s):
+    return s.replace(START, "").replace(QUOTE, "")
+
+
+def collapse(s):
+    return " ".join(plain(s).split())
+
+
+def norm(s):  # digits ignored so "Page 12" and "Page 13" count as the same header
+    return re.sub(r"\d+", "#", collapse(s)).lower()
+
+
+def heading(block):
+    lines = [l.strip().rstrip(".") for l in plain(block).splitlines() if l.strip()]
+    for n in (2, 1):  # "CHAPTER / ONE" and "BIBLIOGRAPHIC / NOTES" span two lines
+        if len(lines) >= n and HEADING.fullmatch(t := " ".join(lines[:n])):
+            return t.title()
+    return None
+
+
+def keep_line(line):  # drops page numbers and OCR crumbs like "G", "OC", "(Q)"
+    letters = [c for c in line if c.isalpha()]
+    return bool(letters) and (len(letters) > 3 or any(c.islower() for c in letters))
+
+
+def join(a, b):
+    if not a:
+        return b
+    if a.endswith("-") and b[:1].islower():
+        return a[:-1] + SOFT + b  # decided by dehyphenate() once the whole book is known
+    if re.search(r"\w-$", a) and b[:1].isupper():  # "Anglo-/Saxon", "pro-/Confederate", but "Mc-/Enery"
+        return a[:-1] + b if re.search(r"\bMa?c-$", a) else a + b
+    if a.endswith("—") or re.search(r"\w/$", a):  # "Comus/Pickwick"
+        return a + b
+    return a + " " + b
+
+
+SOFT = "\x00"
+KEEP_HYPHEN = {"self", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"}
+
+
+def dehyphenate(text):
+    """Resolve line-end hyphens, using the book itself as the dictionary.
+
+    "old-/line" (or "old-/line’s") stays "old-line" if the book prints "old-line"
+    elsewhere and never "oldline"; otherwise the word is joined ("un-/covered" -> "uncovered").
+    shortcut: a compound that only ever appears broken at a line end gets joined ("high-/toned");
+    /usr/share/dict/words was tried and broke as many words as it fixed (no inflections, "ing" counts as a word)
+    """
+    words = Counter(w.lower() for w in re.findall(r"[\w’'-]+", re.sub(rf"\S*{SOFT}\S*", "", text)))
+    words = Counter({re.sub(r"[’']s?$", "", w): n for w, n in words.items()} | words)
+
+    def pick(m):
+        a, b = m.group(1), m.group(2)
+        core = re.sub(r"[’']s?$", "", b).lower()  # "old-/line’s" is looked up as "old-line"
+        hyphened, joined = f"{a}-{core}".lower(), (a + core).lower()
+        if a.lower() in KEEP_HYPHEN or (words[hyphened] and not words[joined]):
+            return f"{a}-{b}"
+        return a + b
+
+    return re.sub(rf"([\w’'-]*){SOFT}([\w’'-]*)", pick, text)
+
+
+def clean(pages):
+    """pages: list of pages, each a list of text blocks top to bottom. Returns Abogen text."""
+    pages = [[b for b in p if plain(b).strip()] for p in pages]
+    indents = any(START in b for p in pages for b in p)
+    # Group OCR variants of a running header ("Miserable Krewes"/"Krowes") under the most common spelling.
+    canon, totals = {}, Counter()
+    for t, n in Counter(norm(p[0]) for p in pages if p).most_common():
+        c = next((c for c in totals if len(t) <= 100 and SequenceMatcher(None, t, c).ratio() >= 0.85), t)
+        canon[t] = c
+        totals[c] += n
+    top_hdr = {t for t, c in canon.items() if totals[c] >= HEADER_MIN_PAGES}
+    # A short chapter's running header may top only one page; it still repeats its display title.
+    shorts = Counter(
+        norm(b) for p in pages for b in p
+        if len(b.split()) <= 8 and not re.search(r"[,.;:!?\"”’]\s*$", b) and not heading(b)
+    )
+    top_hdr |= {t for t in canon if shorts[t] >= 2}
+    bottoms = Counter(norm(p[-1]) for p in pages if p)
+    bottom_hdr = {t for t, n in bottoms.items() if n >= HEADER_MIN_PAGES}
+    book_hdr = totals.most_common(1)[0][0] if totals else None
+
+    # Pass 1: where sections start. A recognised heading starts one; so does a change of
+    # chapter running header (catches headings OCR garbled), split at the header-less
+    # opening page after the old header's last page.
+    starts = {}  # page -> heading text, or None to name it from its running header
+    key = cur = opening = None
+    for i, blocks in enumerate(pages):
+        h = heading(blocks[0]) if blocks else None
+        hdr = canon[norm(blocks[0])] if blocks and norm(blocks[0]) in top_hdr else None
+        if h and h.lower() != key:
+            starts[i], key, cur, opening = h, h.lower(), None, None
+        elif hdr and hdr != book_hdr:
+            if cur and hdr != cur:
+                starts[opening if opening is not None else i] = None
+                key, opening = None, None
+            cur = hdr
+        if hdr is None and opening is None and i not in starts:
+            opening = i
+        elif hdr == cur:
+            opening = None
+
+    # Pass 2: build paragraphs.
+    sections = [{"title": "Front matter", "speak": False, "paras": [], "hdrs": Counter()}]
+    last = last_raw = None  # tag of the previous kept line, in indent mode (after / before drop-cap handling)
+    for i, blocks in enumerate(pages):
+        blocks = list(blocks)
+        new = i in starts
+        if new:
+            sections.append({"title": starts[i], "speak": True, "paras": [], "hdrs": Counter()})
+            last = None
+        if blocks and norm(blocks[0]) in top_hdr:
+            hdr = blocks.pop(0)
+            if canon[norm(hdr)] != book_hdr:
+                sections[-1]["hdrs"][collapse(hdr)] += 1
+        elif new and starts[i]:
+            blocks.pop(0)  # the heading itself; spoken from the title instead
+        if blocks and norm(blocks[-1]) in bottom_hdr:
+            blocks.pop()
+        if new:  # rest of a display title ("on Parade") before the body starts
+            while blocks and len(blocks[0].split()) < 6:
+                blocks.pop(0)
+        paras = sections[-1]["paras"]
+        if indents:
+            # Paragraphs follow the print: an indented first line starts one, a flush line continues
+            # it (across blocks and pages), and a block quote is its own paragraph.
+            for b in blocks:
+                for raw in b.splitlines():
+                    tag = raw[:1] if raw[:1] in (START, QUOTE) else None
+                    if not keep_line(line := plain(raw).strip()):
+                        continue
+                    raw_tag = tag
+                    if new and len(paras) <= 1 and (tag == QUOTE or (tag == START and last_raw == QUOTE)):
+                        tag = None  # lines wrapped around a chapter's drop cap are indented too
+                    last_raw = raw_tag
+                    if not paras or (not line[:1].islower() and (tag == START or (tag == QUOTE) != (last == QUOTE))):
+                        paras.append(line)
+                    else:
+                        paras[-1] = join(paras[-1], line)
+                    last = tag
+            continue
+        for b in blocks:
+            text = ""
+            for line in b.splitlines():
+                if keep_line(line := line.strip()):
+                    text = join(text, line)
+            if not text:
+                continue
+            if paras and (text[:1].islower() or not re.search(r"[.!?:\"”’)]$", paras[-1])):
+                paras[-1] = join(paras[-1], text)
+            else:
+                paras.append(text)
+
+    out = []
+    for s in sections:
+        if not s["paras"] and not s["speak"]:
+            continue
+        title = s["title"]
+        name = s["hdrs"].most_common(1)[0][0] if s["hdrs"] else None
+        if title is None:
+            title = name or "Untitled section"
+        elif name and HEADING.match(title).group(1):  # chapter/part: add its running-header name
+            title = f"{title}: {name}"
+        s["title"] = title
+        out.append(f"<<CHAPTER_MARKER:{title}>>")
+        if s["speak"]:
+            out.append(title.rstrip(".") + ".")
+        out.extend(tidy(s["paras"], title if s["speak"] else None))
+    return dehyphenate("\n\n".join(out) + "\n"), sections
+
+
+WORDLIST = Path("/usr/share/dict/words")  # macOS ships one; only used to spot junk
+
+
+def is_word(tok, vocab):
+    w = re.sub(r"^\W+|\W+$", "", tok).lower()
+    return len(w) >= 3 and (w in vocab or re.sub(r"(’s|'s|s|es|ed|d|ing|ly)$", "", w) in vocab)
+
+
+def tidy(paras, title, vocab=None):
+    """OCR junk: stray _ ~ | tokens, doubled periods, display-title words and drop-cap
+    crumbs at the start of a chapter, and non-word garbage after its last sentence."""
+    paras = [re.sub(r"(?<!\.)\.\.(?!\.)", ".", re.sub(r"(?<!\S)[_~|]+(?!\S)\s*|(?<!\S)_+(?=\w)", "", p)).strip() for p in paras]
+    paras = [p for p in paras if p]
+    if vocab is None:
+        vocab = set(WORDLIST.read_text().lower().split()) if WORDLIST.exists() else set()
+    if title and paras:
+        # display title glued onto the opening ("Battle of Liberty Place Fk he steamer"); only
+        # when a non-word follows, so "The Battle of Liberty Place was..." stays
+        words = {re.sub(r"\W", "", w).lower() for w in title.split()}
+        toks = paras[0].split()
+        n = 0
+        while n < len(toks) and re.sub(r"\W", "", toks[n]).lower() in words:
+            n += 1
+        if n >= 2 and n < len(toks) and not is_word(toks[n], vocab):
+            toks = toks[n:]
+        # lone capitals left by a drop cap ("out of C their"); I and A are real words
+        paras[0] = " ".join(t for t in toks if not re.fullmatch(r"[B-HJ-Z]", t))
+    if vocab and paras:
+        toks = paras[-1].split()
+        cut = None
+        for i in range(len(toks) - 1, 0, -1):  # earliest sentence end after which almost nothing is a word
+            if re.search(r"[.!?][\"”’)]?$", toks[i - 1]):
+                tail = toks[i:]
+                if len(tail) >= 4 and sum(is_word(t, vocab) for t in tail) < 0.3 * len(tail):
+                    cut = i
+                elif len(tail) >= 4:
+                    break
+        if cut:
+            paras[-1] = " ".join(toks[:cut])
+    return paras
+
+
+def read_blocks(doc):
+    """Text blocks per page, minus small print (captions, footnotes, page numbers).
+
+    Block quotes are often a little smaller than body text, so only blocks under 80% of
+    the body size go, plus photo credits up to 90%.
+    """
+    pages, line_sizes = [], []
+    for p in doc:
+        blocks = []
+        for b in p.get_text("dict", sort=True)["blocks"]:
+            lines = [[s for s in l["spans"] if s["text"].strip()] for l in b.get("lines", [])]
+            lines = [l for l in lines if l]
+            if not lines:
+                continue
+            sizes = sorted(s["size"] for l in lines for s in l)
+            line_sizes += [l[0]["size"] for l in lines]
+            text = [(min(s["bbox"][0] for s in l), l[0]["bbox"][3], collapse(" ".join(s["text"] for s in l))) for l in lines]
+            blocks.append((text, sizes[len(sizes) // 2]))
+        pages.append(blocks)
+    body = sorted(line_sizes)[len(line_sizes) // 2] if line_sizes else 0
+    # shortcut: OCR sizes of one-line blocks are noisy, so a body line can go too (a verse line read as 7.4pt in 9.4pt body, next to 7.1pt captions); needs image-adjacency or layout analysis to fix
+    pages = [
+        [t for t, s in p if s >= 0.8 * body and not (s < 0.9 * body and CREDIT.search(" ".join(l for _, _, l in t)))]
+        for p in pages
+    ]
+    tagged, counts = tag_indents(pages, body)
+    flush, starts = counts.get(None, 0), counts.get(START, 0)
+    # Tags only for books that indent paragraphs (most lines flush, a steady share indented ~1-2 em);
+    # anything else (block paragraphs, two columns) keeps the punctuation-based joining.
+    use = body and flush + starts and flush > 0.6 * sum(counts.values()) and 0.03 < starts / (flush + starts) < 0.35
+    return [["\n".join((tag or "") + l if use else l for tag, l in b) for b in p] for p in tagged]
+
+
+def tag_indents(pages, em):
+    """Tag each line from its indent off the page's left margin.
+
+    Block quotes can be indented exactly like a paragraph's first line, so neighbours decide:
+    an indented line between flush lines starts a paragraph; a run of indented lines is a
+    quote, except that a full-width indented line followed by a flush one starts the paragraph
+    after the quote (the quote's own last line is usually short). OCR sometimes cuts one
+    printed line in two; the right-hand piece (same baseline) continues the left one.
+    """
+    tagged, counts = [], Counter()
+    for p in pages:
+        flat = [(x, y, l) for b in p for x, y, l in b]
+        xs = sorted(x for x, _, l in flat if len(l) > 20)
+        margin = xs[len(xs) // 10] if len(xs) >= 3 else None  # 10th percentile survives the odd outdented line
+        full = 0.8 * sorted(len(l) for _, _, l in flat)[len(flat) // 2] if flat else 0
+        same = [i > 0 and abs(y - flat[i - 1][1]) < 0.5 * em for i, (_, y, _) in enumerate(flat)]
+        ems = [(x - margin) / em if margin is not None and em else 0 for x, _, _ in flat]
+        ind = []
+        for i in range(len(flat)):
+            ind.append(ind[-1] if same[i] else ems[i] >= 0.75)
+        tags = []
+        for i, (_, _, l) in enumerate(flat):
+            prev, nxt = i > 0 and ind[i - 1], i + 1 < len(flat) and ind[i + 1]
+            if same[i]:
+                tags.append(QUOTE if tags[-1] == QUOTE else None)
+            elif not ind[i]:
+                tags.append(None)
+            elif ems[i] <= 2.5 and not nxt and (not prev or len(l) >= full):  # deeper: verse, drop-cap wrap
+                tags.append(START)
+            else:
+                tags.append(QUOTE)
+            if len(l) > 20:
+                counts[tags[-1]] += 1
+        it = iter(tags)
+        tagged.append([[(next(it), l) for _, _, l in b] for b in p])
+    return tagged, counts
+
+
+def self_test():
+    pages = [
+        ["Title Page"],
+        ["CHAPTER\nONE", "The Start", "It was a dark and stormy night, the rain fell in tor-\nrents and", "12"],
+        ["BOOK TITLE", "everyone hid.\nThe end of para.\nOC", "Second para here.", "13"],
+        ["The Start", "Part of the story goes on.", "14"],
+        ["BOOK TITLE", "More.", "15"],
+        ["The Start", "The old-line krewes, the old-\nline’s krewes, twenty-\nthree Anglo-\nSaxon Mc-\nEnery and/\nor Comus/\nPickwick men.", "16"],
+        ["BOOK TITLE", "More.", "17"],
+        ["The Start", "More.", "18"],
+        ["Ch@pt3r Tvv0", "The Sequel", "A garbled heading starts this chapter, it seems.", "19"],
+        ["BOOK TITLE", "More.", "20"],
+        ["The Sequel", "More.", "21"],
+        ["BOOK TITLE", "More.", "22"],
+        ["The Sequel", "More.", "23"],
+        ["BOOK TITLE", "More.", "24"],
+        ["The Seqvel", "Typo header.", "24"],
+        ["BOOK TITLE", "More.", "24"],
+        ["The Sequel", "Last.", "25"],
+        ["INDEX", "Aaron, Bill, 247"],
+        ["BOOK TITLE", "Zed, 3"],
+    ]
+    text, _ = clean(pages)
+    assert "<<CHAPTER_MARKER:Front matter>>\n\nTitle Page" in text, text
+    assert "<<CHAPTER_MARKER:Chapter One: The Start>>\n\nChapter One: The Start." in text, text
+    assert "rain fell in torrents and everyone hid. The end of para.\n\nSecond para here." in text, text
+    assert "Part of the story goes on." in text and "<<CHAPTER_MARKER:Part" not in text, text
+    assert "<<CHAPTER_MARKER:The Sequel>>\n\nThe Sequel.\n\nA garbled heading" in text, text
+    assert "Seqvel" not in text and text.count("<<CHAPTER_MARKER") == 4, text
+    assert "The old-line krewes, the old-line’s krewes, twenty-three Anglo-Saxon McEnery and/or Comus/Pickwick men." in text, text
+    assert "<<CHAPTER_MARKER:Index>>" in text and "BOOK TITLE" not in text and "OC" not in text, text
+    assert not re.search(r"\b(1[2-9]|2[0-5])\b", text), text
+    title = "Chapter Five: The Battle of Liberty Place"
+    vocab = {"steamer", "came", "end", "the", "was", "fought", "war", "vitamin"}
+    got = tidy(["Battle of Liberty Place Fk he steamer _ came..", "World War I, vitamin C. The end. xq zz qx vv"], title, vocab)
+    assert got == ["Fk he steamer came.", "World War I, vitamin C. The end."], got
+    assert tidy(["The Battle of Liberty Place was fought."], title, vocab) == ["The Battle of Liberty Place was fought."]
+    assert tidy(["Out of C their element."], title, vocab) == ["Out of their element."]
+    # short chapter: running header tops one page only, but repeats the display title
+    text, _ = clean([["CHAPTER\nNINE", "The Last Word", "Body text that opens the chapter properly."],
+                     ["The Last Word", "more body text, which continues.", "Ends here."]])
+    assert "The Last Word" not in text.split("Chapter Nine: The Last Word.", 1)[1], text
+    # indent mode: indented first line starts a paragraph; a run of indented lines is a block quote
+    page = [[(63, 10, "Para one starts here, its first line indented,"), (50, 20, "and goes on flush on the next line of the page."),
+             (63, 30, "A block quote line indented just like a start,"), (63, 40, "with its second line indented the same way too."),
+             (63, 50, "short end.")],
+            [(50, 60, "After the quote the text continues flush, as here."), (120, 60, "rest of the same line"),
+             (63, 70, "Second paragraph starts here with its indent too,"), (50, 80, "and finishes flush on this line of the page.")]]
+    tagged, _ = tag_indents([page], 10)
+    assert [t for b in tagged[0] for t, _ in b] == [START, None, QUOTE, QUOTE, QUOTE, None, None, START, None], tagged
+    blocks = ["\n".join((t or "") + l for t, l in b) for b in tagged[0]]
+    text, _ = clean([["CHAPTER\nTEN", "Some Title", "Opening paragraph of the chapter, long enough to keep."], blocks])
+    paras = text.strip().split("\n\n")[-5:]
+    assert paras[0].startswith("Opening paragraph") and paras[1].endswith("next line of the page."), paras
+    assert paras[2] == "A block quote line indented just like a start, with its second line indented the same way too. short end.", paras
+    assert paras[3] == "After the quote the text continues flush, as here. rest of the same line", paras
+    assert paras[4].startswith("Second paragraph"), paras
+    print("self-test ok")
+
+
+def main():
+    if sys.argv[1:] == ["--self-test"]:
+        return self_test()
+    if len(sys.argv) not in (2, 3):
+        sys.exit(__doc__)
+    import pymupdf
+
+    src = Path(sys.argv[1])
+    dst = Path(sys.argv[2]) if len(sys.argv) == 3 else src.with_suffix(".txt")
+    with pymupdf.open(src) as doc:
+        pages = read_blocks(doc)
+    if not any(pages):
+        sys.exit(f"{src}: no text layer (scanned without OCR?) - run ocrmypdf first")
+    text, sections = clean(pages)
+    dst.write_text(text)
+    for s in sections:
+        words = sum(len(p.split()) for p in s["paras"])
+        print(f"{words:7d} words  {s['title']}", file=sys.stderr)
+    print(f"wrote {dst}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

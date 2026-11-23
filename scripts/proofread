@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Split a pdf2tts .txt into chapters for Claude to proofread, then apply the fixes and join it back.
+
+  scripts/proofread split book.txt book.pdf WORKDIR   # WORKDIR/ch/NN.txt + WORKDIR/BRIEF.md
+  (one Claude agent per chapter or two, each given WORKDIR/BRIEF.md, writes WORKDIR/fixes/NN.json)
+  scripts/proofread join WORKDIR out.txt              # applies fixes, prints pronunciation list
+  scripts/proofread --self-test
+"""
+import json, re, sys
+from collections import defaultdict
+from pathlib import Path
+
+BRIEF = Path(__file__).with_name("proofread-brief.md")
+MARKER = re.compile(r"^(?=<<CHAPTER_MARKER:)", re.M)
+
+
+def split(txt, pdf, work):
+    work = Path(work).resolve()
+    (work / "ch").mkdir(parents=True, exist_ok=True)
+    (work / "fixes").mkdir(exist_ok=True)
+    parts = MARKER.split(Path(txt).read_text())
+    for i, part in enumerate(parts):
+        (work / "ch" / f"{i:02}.txt").write_text(part)
+    (work / "BRIEF.md").write_text(BRIEF.read_text().format(work=work, pdf=Path(pdf).resolve()))
+    print(f"{len(parts)} files in {work}/ch; brief at {work}/BRIEF.md")
+
+
+def apply(text, fixes, name=""):
+    for fix in fixes:
+        n = text.count(fix["old"])
+        if not fix["old"] or n != fix["count"]:
+            print(f"{name}: SKIP count {n}!={fix['count']}: {fix['old'][:60]!r}")
+            continue
+        text = text.replace(fix["old"], fix["new"])
+    return text
+
+
+def join(work, out):
+    work, words = Path(work), defaultdict(lambda: [0, ""])
+    parts = []
+    for src in sorted((work / "ch").glob("*.txt")):
+        f = work / "fixes" / f"{src.stem}.json"
+        data = json.loads(f.read_text()) if f.exists() else {}
+        parts.append(apply(src.read_text(), data.get("fixes", []), src.stem))
+        for p in data.get("pronounce", []):
+            words[p["word"]][0] += p.get("count", 0)
+            words[p["word"]][1] = p["respelling"]
+    Path(out).write_text("".join(parts))
+    print(f"wrote {out}")
+    if words:
+        print("\nAbogen pronunciation overrides (most frequent first):")
+        for w, (n, r) in sorted(words.items(), key=lambda kv: -kv[1][0]):
+            print(f"  {n:5}  {w} -> {r}")
+
+
+def self_test():
+    text = "Front.\n\n<<CHAPTER_MARKER:One>>\nOne.\n\nhe cat sat.\n\n<<CHAPTER_MARKER:Two>>\nTwo.\n"
+    parts = MARKER.split(text)
+    assert len(parts) == 3 and "".join(parts) == text  # split is lossless
+    assert apply(parts[1], [{"old": "he cat", "new": "The cat", "count": 1}]).endswith("The cat sat.\n\n")
+    assert apply("a a", [{"old": "a", "new": "b", "count": 1}]) == "a a"  # count mismatch skipped
+    BRIEF.read_text().format(work="W", pdf="P")  # brief has only {work}/{pdf} placeholders
+    print("ok")
+
+
+if __name__ == "__main__":
+    cmd, args = (sys.argv[1:2] or [""])[0], sys.argv[2:]
+    if cmd == "split" and len(args) == 3:
+        split(*args)
+    elif cmd == "join" and len(args) == 2:
+        join(*args)
+    elif cmd == "--self-test":
+        self_test()
+    else:
+        sys.exit(__doc__)

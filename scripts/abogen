@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Start the Abogen web UI (http://localhost:8808) from tts/uv.lock; installs on first run. Needs uv.
+set -euo pipefail
+run() { uv run --quiet --locked --project "$(dirname "$0")/../tts" "$@"; }
+
+# Abogen's own ffmpeg download looks in .../ffmpeg/darwin but unpacks to darwin_arm64, so jobs fail.
+# With ffmpeg already on PATH it skips that download (static_ffmpeg add_paths(weak=True)).
+if ! command -v ffmpeg >/dev/null; then
+  PATH="$(run python -c 'import os, static_ffmpeg.run as r; print(os.path.dirname(r.get_or_fetch_platform_executables_else_raise()[0]))' | tail -1):$PATH"  # first run prints download progress
+fi
+
+# Settings that must not be left at Abogen's defaults; everything else stays as set in its UI.
+run python - <<'EOF'
+from abogen.utils import load_config, save_config
+cfg = load_config()
+cfg.update(output_format="m4b", default_voice="af_heart", language="en", subtitle_mode="Disabled")
+# Contraction expansion rewrites quotations ("don't" -> "do not"); Kokoro reads contractions fine.
+cfg.update({k: False for k in [
+    "normalization_apostrophes_contractions", "normalization_contraction_aux_be",
+    "normalization_contraction_aux_have", "normalization_contraction_modal_will",
+    "normalization_contraction_modal_would", "normalization_contraction_negation_not",
+    "normalization_contraction_let_us"]})
+save_config(cfg)
+EOF
+
+# The web UI doesn't enable this itself (the desktop app does); without it, MPS previews fail.
+PYTORCH_ENABLE_MPS_FALLBACK=1 PATH="$PATH" exec uv run --quiet --locked --project "$(dirname "$0")/../tts" abogen-web "$@"
